@@ -47,6 +47,10 @@ import albumRouter from "./routes/album.route.js";
 import playlistRouter from "./routes/playlist.route.js";
 import statsRouter from "./routes/stats.route.js";
 
+app.get("/health", (req, res) => {
+  res.send("OK");
+});
+
 // routes
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/admin", adminRouter);
