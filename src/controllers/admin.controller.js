@@ -228,3 +228,135 @@ export const deletePlaylist = async (req, res) => {
 export const checkAdmin = async (req, res) => {
   return res.status(200).json({ admin: true });
 };
+
+export const addSongToPlaylist = async (req, res) => {
+  try {
+    const { playlistId, songId } = req.params;
+    const playlist = await Playlist.findById(playlistId);
+    if (!playlist) {
+      return res.status(404).json({
+        success: false,
+        message: "Playlist not found",
+      });
+    }
+    const song = await Song.findById(songId);
+    if (!song) {
+      return res.status(404).json({
+        success: false,
+        message: "Song not found",
+      });
+    }
+    playlist.songs.push(song._id);
+    await playlist.save();
+    res.status(200).json({
+      success: true,
+      message: "Song added to playlist successfully",
+      playlist,
+    });
+  } catch (error) {
+    console.error("Error adding song to playlist:", error);
+    res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred while adding the song to the playlist.",
+    });
+  }
+};
+
+export const removeSongFromPlaylist = async (req, res) => {
+  try {
+    const { playlistId, songId } = req.params;
+    const playlist = await Playlist.findById(playlistId);
+    if (!playlist) {
+      return res.status(404).json({
+        success: false,
+        message: "Playlist not found",
+      });
+    }
+    const songIndex = playlist.songs.indexOf(songId);
+    if (songIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "Song not found in playlist",
+      });
+    }
+    playlist.songs.splice(songIndex, 1);
+    await playlist.save();
+    res.status(200).json({
+      success: true,
+      message: "Song removed from playlist successfully",
+      playlist,
+    });
+  } catch (error) {
+    console.error("Error removing song from playlist:", error);
+    res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred while removing the song from the playlist.",
+    });
+  }
+};
+
+export const addSongToAlbum = async (req, res) => {
+  try {
+    const { albumId, songId } = req.params;
+    const album = await Album.findById(albumId);
+    if (!album) {
+      return res.status(404).json({
+        success: false,
+        message: "Album not found",
+      });
+    }
+    const song = await Song.findById(songId);
+    if (!song) {
+      return res.status(404).json({
+        success: false,
+        message: "Song not found",
+      });
+    }
+    album.songs.push(song._id);
+    await album.save();
+    res.status(200).json({
+      success: true,
+      message: "Song added to album successfully",
+      album,
+    });
+  } catch (error) {
+    console.error("Error adding song to album:", error);
+    res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred while adding the song to the album.",
+    });
+  }
+};
+
+export const removeSongFromAlbum = async (req, res) => {
+  try {
+    const { albumId, songId } = req.params;
+    const album = await Album.findById(albumId);
+    if (!album) {
+      return res.status(404).json({
+        success: false,
+        message: "Album not found",
+      });
+    }
+    const songIndex = album.songs.indexOf(songId);
+    if (songIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "Song not found in album",
+      });
+    }
+    album.songs.splice(songIndex, 1);
+    await album.save();
+    res.status(200).json({
+      success: true,
+      message: "Song removed from album successfully",
+      album,
+    });
+  } catch (error) {
+    console.error("Error removing song from album:", error);
+    res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred while removing the song from the album.",
+    });
+  }
+};
