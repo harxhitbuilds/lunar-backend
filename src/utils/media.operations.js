@@ -1,46 +1,118 @@
 import fs from "fs";
-import { bucket } from "../utils/firebase.config.js";
+import { v2 as cloudinary } from "cloudinary";
+import dotenv from "dotenv";
 
-const uploadToFirebase = async (file) => {
+dotenv.config();
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+/**
+ * Uploads a local file to Cloudinary and deletes the local file afterwards.
+ * @param {Object} file - The file object from Multer (contains path, mimetype, originalname, etc.)
+ * @returns {Promise<string>} - The public secure URL of the uploaded resource.
+ */
+
+const uploadToCloudinary = async (file) => {
   try {
     if (!file) {
       throw new Error("No file provided");
     }
 
     const localFilePath = file.path;
-    const uniqueFileName = `${Date.now()}_${file.originalname}`;
-    const firebaseFile = bucket.file(uniqueFileName);
-
-    await firebaseFile.save(fs.readFileSync(localFilePath), {
-      metadata: { contentType: file.mimetype },
+    const response = await cloudinary.uploader.upload(localFilePath, {
+      resource_type: "auto",
     });
 
-    await firebaseFile.makePublic();
-    const publicUrl = firebaseFile.publicUrl();
+    if (fs.existsSync(localFilePath)) {
+      fs.unlinkSync(localFilePath);
+    }
 
-    fs.unlinkSync(localFilePath);
-
-    return publicUrl;
+    return response.secure_url;
   } catch (error) {
-    console.error("Error uploading file:", error);
+    console.error("Error uploading file to Cloudinary:", error);
+    if (file && file.path && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
     throw error;
   }
 };
 
-const deleteFromFirebase = async (imageURL) => {
+/**
+ * Helper to extract public ID from Cloudinary URL
+ * @param {string} url - Cloudinary resource URL
+ * @returns {string|null} - The public ID
+ */
+
+const getPublicIdFromUrl = (url) => {
+  if (!url) return null;
   try {
-    if (!imageURL) throw new Error("No image URL provided");
+    const parts = url.split('/');
+    const uploadIndex = parts.indexOf('upload');
+    if (uploadIndex === -1) return null;
 
-    const fileName = decodeURIComponent(imageURL.split("/").pop());
-    const file = bucket.file(fileName);
+    let publicIdParts = parts.slice(uploadIndex + 1);
 
-    await file.delete();
+    if (publicIdParts[0] && publicIdParts[0].match(/^v\d+$/)) {
+      publicIdParts = publicIdParts.slice(1);
+    }
 
-    return true;
+    const publicIdWithExtension = publicIdParts.join('/');
+    const lastDotIndex = publicIdWithExtension.lastIndexOf('.');
+    if (lastDotIndex === -1) {
+      return publicIdWithExtension;
+    }
+    return publicIdWithExtension.substring(0, lastDotIndex);
   } catch (error) {
-    console.error("Error deleting image from Firebase:", error.message);
+    console.error("Error extracting public ID from URL:", error);
+    return null;
+  }
+};
+
+/**
+ * Helper to determine resource type from Cloudinary URL
+ * @param {string} url - Cloudinary resource URL
+ * @returns {string} - "image" | "video" | "raw"
+ */
+
+const getResourceTypeFromUrl = (url) => {
+  if (!url) return "image";
+  if (url.includes("/video/")) {
+    return "video";
+  }
+  if (url.includes("/raw/")) {
+    return "raw";
+  }
+  return "image";
+};
+
+/**
+ * Deletes a resource from Cloudinary given its URL.
+ * @param {string} url - Cloudinary resource URL to delete.
+ * @returns {Promise<boolean>} - True if deletion was successful, false otherwise.
+ */
+
+const deleteFromCloudinary = async (url) => {
+  try {
+    if (!url) throw new Error("No URL provided");
+
+    const publicId = getPublicIdFromUrl(url);
+    const resourceType = getResourceTypeFromUrl(url);
+
+    if (!publicId) throw new Error("Invalid URL or public ID could not be extracted");
+
+    const result = await cloudinary.uploader.destroy(publicId, {
+      resource_type: resourceType,
+    });
+
+    return result.result === "ok";
+  } catch (error) {
+    console.error("Error deleting from Cloudinary:", error.message);
     return false;
   }
 };
 
-export { uploadToFirebase,deleteFromFirebase };
+export { uploadToCloudinary, deleteFromCloudinary };

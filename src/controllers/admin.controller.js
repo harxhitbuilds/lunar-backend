@@ -2,8 +2,8 @@ import Song from "../models/song.model.js";
 import Album from "../models/album.model.js";
 import Playlist from "../models/playlist.model.js";
 import {
-  uploadToFirebase,
-  deleteFromFirebase,
+  uploadToCloudinary,
+  deleteFromCloudinary,
 } from "../utils/media.operations.js";
 
 export const addSong = async (req, res) => {
@@ -23,8 +23,8 @@ export const addSong = async (req, res) => {
         message: "Cover image and audio file are required.",
       });
     }
-    const coverImageUrl = await uploadToFirebase(imageFile);
-    const audioFileUrl = await uploadToFirebase(audioFile);
+    const coverImageUrl = await uploadToCloudinary(imageFile);
+    const audioFileUrl = await uploadToCloudinary(audioFile);
     const newSong = new Song({
       title,
       artist,
@@ -94,8 +94,8 @@ export const deleteSong = async (req, res) => {
       });
     }
 
-    await deleteFromFirebase(song.coverImage);
-    await deleteFromFirebase(song.url);
+    await deleteFromCloudinary(song.coverImage);
+    await deleteFromCloudinary(song.url);
 
     await Song.findByIdAndDelete(id);
     res.status(200).json({
@@ -126,7 +126,7 @@ export const addAlbum = async (req, res) => {
         message: "Cover image is required.",
       });
     }
-    const coverImageUrl = await uploadToFirebase(req.file);
+    const coverImageUrl = await uploadToCloudinary(req.file);
     const newAlbum = new Album({
       title,
       artist,
@@ -180,7 +180,7 @@ export const addPlaylist = async (req, res) => {
         message: "Title, artist, and cover image are required.",
       });
     }
-    const coverImageUrl = await uploadToFirebase(req.file);
+    const coverImageUrl = await uploadToCloudinary(req.file);
     const newPlaylist = new Playlist({
       title,
       artist,
